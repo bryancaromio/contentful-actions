@@ -73,9 +73,25 @@ jobs:
 
       - name: Show migration preview
         run: |
-          echo "::group::Migration Script Preview"
-          cat ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js
-          echo "::endgroup::"
+          cat > migration-preview.md << 'EOF'
+          # Contentful Migration Preview
+          
+          **Source Environment:** ${{ github.event.inputs.source-environment-id }}
+          **Target Environment:** ${{ github.event.inputs.target-environment-id }}
+          **Timestamp:** ${{ steps.timestamp.outputs.timestamp }}
+          
+          ## Migration Script
+          
+          ```javascript
+          EOF
+          
+          cat ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js >> migration-preview.md
+          
+          cat >> migration-preview.md << 'EOF'
+          ```
+          EOF
+          
+          cat migration-preview.md
 
       - name: Apply migration
         if: ${{ !github.event.inputs.preview-only }}
@@ -95,4 +111,11 @@ jobs:
         with:
           name: contentful-migration-${{ github.event.inputs.source-environment-id }}-to-${{ github.event.inputs.target-environment-id }}
           path: ./migrations
+          retention-days: 7 
+
+      - name: Upload migration preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-preview-${{ steps.timestamp.outputs.timestamp }}
+          path: migration-preview.md
           retention-days: 7 
