@@ -67,6 +67,7 @@ jobs:
             --source-environment-id ${{ github.event.inputs.source-environment-id }} \
             --target-environment-id ${{ github.event.inputs.target-environment-id }} \
             --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
+            --space-id $CONTENTFUL_SPACE_ID \
             --yes \
             --output-file ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js
 
