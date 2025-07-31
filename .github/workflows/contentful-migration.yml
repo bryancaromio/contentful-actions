@@ -73,25 +73,17 @@ jobs:
 
       - name: Show migration preview
         run: |
-          cat > migration-preview.md << 'EOF'
-          # Contentful Migration Preview
-          
-          **Source Environment:** ${{ github.event.inputs.source-environment-id }}
-          **Target Environment:** ${{ github.event.inputs.target-environment-id }}
-          **Timestamp:** ${{ steps.timestamp.outputs.timestamp }}
-          
-          ## Migration Script
-          
-          ```javascript
-          EOF
-          
-          cat ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js >> migration-preview.md
-          
-          cat >> migration-preview.md << 'EOF'
-          ```
-          EOF
-          
-          cat migration-preview.md
+          echo "## Contentful Migration Preview" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Source Environment:** ${{ github.event.inputs.source-environment-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Environment:** ${{ github.event.inputs.target-environment-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** ${{ steps.timestamp.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Migration Script" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```javascript' >> $GITHUB_STEP_SUMMARY
+          cat ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Apply migration
         if: ${{ !github.event.inputs.preview-only }}
