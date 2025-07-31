@@ -104,10 +104,3 @@ jobs:
           name: contentful-migration-${{ github.event.inputs.source-environment-id }}-to-${{ github.event.inputs.target-environment-id }}
           path: ./migrations
           retention-days: 7 
-
-      - name: Upload migration preview
-        uses: actions/upload-artifact@v4
-        with:
-          name: migration-preview-${{ steps.timestamp.outputs.timestamp }}
-          path: migration-preview.md
-          retention-days: 7 
