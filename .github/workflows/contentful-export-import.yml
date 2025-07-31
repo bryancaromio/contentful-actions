@@ -1,0 +1,121 @@
+name: Contentful Space Export and Import
+
+on:
+  workflow_dispatch:
+    inputs:
+      source-environment-id:
+        description: 'Source Environment ID'
+        required: true
+        type: choice
+        options:
+          - 'master'
+          - 'development'
+          - 'qa'
+          - 'stage'
+      target-environment-id:
+        description: 'Target Environment ID'
+        required: true
+        type: choice
+        options:
+          - 'master'
+          - 'development'
+          - 'qa'
+          - 'stage'
+      include-drafts:
+        description: 'Include draft entries in export'
+        required: false
+        type: boolean
+        default: false
+      include-archived:
+        description: 'Include archived entries in export'
+        required: false
+        type: boolean
+        default: false
+      download-assets:
+        description: 'Download and re-upload assets'
+        required: false
+        type: boolean
+        default: true
+      skip-content-publishing:
+        description: 'Create content without publishing'
+        required: false
+        type: boolean
+        default: false
+      content-model-only:
+        description: 'Import only content types'
+        required: false
+        type: boolean
+        default: false
+      skip-content-model:
+        description: 'Skip importing content types and locales'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  export-import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate environments
+        run: |
+          if [ "${{ github.event.inputs.source-environment-id }}" = "${{ github.event.inputs.target-environment-id }}" ]; then
+            echo "Error: Source and target environments cannot be the same"
+            echo "Source: ${{ github.event.inputs.source-environment-id }}"
+            echo "Target: ${{ github.event.inputs.target-environment-id }}"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Contentful CLI
+        run: npm install -g contentful-cli
+
+      - name: Create directories
+        run: |
+          mkdir -p ./exports
+          mkdir -p ./assets
+
+      - name: Export from source space
+        env:
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+        run: |
+          contentful space export \
+            --space-id $CONTENTFUL_SPACE_ID \
+            --environment-id ${{ github.event.inputs.source-environment-id }} \
+            --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
+            --export-dir ./exports \
+            --include-drafts ${{ github.event.inputs.include-drafts }} \
+            --include-archived ${{ github.event.inputs.include-archived }} \
+            --download-assets ${{ github.event.inputs.download-assets }} \
+            --content-file export-${{ github.event.inputs.source-environment-id }}.json
+
+      - name: Import to target space
+        env:
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+        run: |
+          contentful space import \
+            --space-id $CONTENTFUL_SPACE_ID \
+            --environment-id ${{ github.event.inputs.target-environment-id }} \
+            --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
+            --content-file ./exports/export-${{ github.event.inputs.source-environment-id }}.json \
+            --skip-content-publishing ${{ github.event.inputs.skip-content-publishing }} \
+            --content-model-only ${{ github.event.inputs.content-model-only }} \
+            --skip-content-model ${{ github.event.inputs.skip-content-model }} \
+            --upload-assets ${{ github.event.inputs.download-assets }} \
+            --assets-directory ./exports \
+            --timeout 60000
+
+      - name: Upload export artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-export-${{ github.event.inputs.source-environment-id }}-to-${{ github.event.inputs.target-environment-id }}
+          path: ./exports
+          retention-days: 7 

@@ -1,0 +1,97 @@
+name: Contentful Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      source-environment-id:
+        description: 'Source Environment ID'
+        required: true
+        type: choice
+        options:
+          - 'master'
+          - 'development'
+          - 'qa'
+          - 'stage'
+      target-environment-id:
+        description: 'Target Environment ID'
+        required: true
+        type: choice
+        options:
+          - 'master'
+          - 'development'
+          - 'qa'
+          - 'stage'
+      preview-only:
+        description: 'Generate migration script without applying changes'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  migration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate environments
+        run: |
+          if [ "${{ github.event.inputs.source-environment-id }}" = "${{ github.event.inputs.target-environment-id }}" ]; then
+            echo "Error: Source and target environments cannot be the same"
+            echo "Source: ${{ github.event.inputs.source-environment-id }}"
+            echo "Target: ${{ github.event.inputs.target-environment-id }}"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Contentful CLI
+        run: npm install -g contentful-cli
+
+      - name: Create migrations directory
+        run: mkdir -p ./migrations
+
+      - name: Generate timestamp
+        id: timestamp
+        run: echo "timestamp=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Generate migration script
+        env:
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+        run: |
+          contentful merge export \
+            --source-environment-id ${{ github.event.inputs.source-environment-id }} \
+            --target-environment-id ${{ github.event.inputs.target-environment-id }} \
+            --yes \
+            --output-file ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js
+
+      - name: Show migration preview
+        run: |
+          echo "Migration Script Preview:"
+          echo "========================="
+          cat ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js
+          echo "========================="
+
+      - name: Apply migration
+        if: ${{ !github.event.inputs.preview-only }}
+        env:
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+        run: |
+          echo "Applying migration to target environment..."
+          contentful space migration \
+            --space-id $CONTENTFUL_SPACE_ID \
+            --environment-id ${{ github.event.inputs.target-environment-id }} \
+            --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
+            ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js
+
+      - name: Upload migration artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-migration-${{ github.event.inputs.source-environment-id }}-to-${{ github.event.inputs.target-environment-id }}
+          path: ./migrations
+          retention-days: 7 
