@@ -92,7 +92,7 @@ jobs:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
         run: |
           echo "Applying migration to target environment..."
-          contentful space migration \
+          echo "y" | contentful space migration \
             --space-id $CONTENTFUL_SPACE_ID \
             --environment-id ${{ github.event.inputs.target-environment-id }} \
             --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
