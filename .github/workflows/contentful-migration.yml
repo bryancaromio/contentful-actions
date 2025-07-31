@@ -73,12 +73,9 @@ jobs:
 
       - name: Show migration preview
         run: |
-          echo "::notice::Migration Script Preview:"
-          echo "::notice::========================="
-          cat ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js | while IFS= read -r line; do
-            echo "::notice::$line"
-          done
-          echo "::notice::========================="
+          echo "::group::Migration Script Preview"
+          cat ./migrations/${{ steps.timestamp.outputs.timestamp }}-migration.js
+          echo "::endgroup::"
 
       - name: Apply migration
         if: ${{ !github.event.inputs.preview-only }}
